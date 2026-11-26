@@ -1,0 +1,6 @@
+{
+  "name": "System Audio Note Taker",
+  "description": "Capture whole-system laptop audio and microphone streams, transcribe verbatim, auto-correct grammar with inline diffs, and synthesize structured summaries.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

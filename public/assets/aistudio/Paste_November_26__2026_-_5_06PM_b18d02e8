@@ -1,0 +1,2525 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>System Audio Note Taker</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            studio: {
+              bg: '#0f172a',
+              card: '#1e293b',
+              border: '#334155',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.35);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.55);
+    }
+
+    /* Inline Grammar Diff Styling */
+    .diff-del {
+      background-color: rgba(244, 63, 94, 0.16);
+      color: #fb7185;
+      text-decoration: line-through;
+      padding: 1px 4px;
+      border-radius: 4px;
+      margin-right: 3px;
+    }
+    html:not(.dark) .diff-del {
+      background-color: rgba(244, 63, 94, 0.12);
+      color: #e11d48;
+    }
+
+    .diff-ins {
+      background-color: rgba(16, 185, 129, 0.18);
+      color: #34d399;
+      font-weight: 500;
+      padding: 1px 5px;
+      border-radius: 4px;
+      border-bottom: 1.5px solid #10b981;
+    }
+    html:not(.dark) .diff-ins {
+      background-color: rgba(16, 185, 129, 0.14);
+      color: #059669;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-[#0b0f19] dark:text-slate-100 font-sans antialiased transition-colors duration-200 min-h-screen flex flex-col">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-30 bg-white/85 dark:bg-[#0b0f19]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3">
+    <div class="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <!-- Mobile Sidebar Toggle -->
+        <button id="mobileSidebarBtn" class="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Toggle Saved Sessions">
+          <i data-lucide="panel-left" class="w-5 h-5"></i>
+        </button>
+
+        <!-- Logo & Title -->
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/25">
+            <i data-lucide="audio-waveform" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-base sm:text-lg font-bold tracking-tight leading-none">System Audio Note Taker</h1>
+              <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                Whole-System Audio + Grammar AI
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block mt-1">Capture entire laptop system sound (Zoom, Air Class, desktop apps, tabs), auto-correct grammar, and summarize</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Pill & Action Controls -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Live Status Badge -->
+        <div id="statusBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 dark:bg-[#1e293b] dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all">
+          <span id="statusDot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span id="statusText">Ready</span>
+        </div>
+
+        <!-- Setup Guide Button -->
+        <button id="openGuideBtn" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:text-indigo-300 dark:hover:bg-indigo-900/70 border border-indigo-200/70 dark:border-indigo-800/70 transition">
+          <i data-lucide="help-circle" class="w-4 h-4"></i>
+          <span class="hidden md:inline">Audio Setup</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button id="themeToggleBtn" class="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition" title="Toggle Light/Dark Mode">
+          <i data-lucide="moon" class="w-4 h-4 dark:hidden"></i>
+          <i data-lucide="sun" class="w-4 h-4 hidden dark:block"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast Notification Banner -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Main Workspace Container -->
+  <div class="flex-1 max-w-[1600px] w-full mx-auto flex relative overflow-hidden">
+
+    <!-- Saved Sessions Sidebar -->
+    <aside id="notesSidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-72 xl:w-80 bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-800 flex flex-col transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out pt-16 lg:pt-0 shrink-0">
+      <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+        <button id="newNoteBtn" class="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-sm shadow-indigo-500/20 transition cursor-pointer">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>New Session</span>
+        </button>
+        <button id="closeSidebarBtn" class="lg:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Search Sessions -->
+      <div class="p-3 border-b border-slate-100 dark:border-slate-800/80">
+        <div class="relative">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input id="searchNotesInput" type="text" placeholder="Search transcripts & notes..." class="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-[#1e293b] border border-transparent focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition" />
+        </div>
+      </div>
+
+      <!-- Sessions List -->
+      <div id="savedNotesList" class="flex-1 overflow-y-auto p-3 space-y-2">
+        <!-- Populated dynamically -->
+      </div>
+
+      <!-- Storage Footer -->
+      <div class="p-3 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
+        <span id="notesCountLabel">0 saved sessions</span>
+        <span>Local Studio</span>
+      </div>
+    </aside>
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebarBackdrop" class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-30 hidden lg:hidden"></div>
+
+    <!-- Main Studio Workspace -->
+    <main class="flex-1 flex flex-col min-w-0 p-4 sm:p-6 space-y-5 overflow-y-auto">
+
+      <!-- Missing System Audio Warning Banner -->
+      <div id="missingAudioBanner" class="hidden rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 p-4 shadow-xs">
+        <div class="flex items-start gap-3">
+          <div class="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 shrink-0">
+            <i data-lucide="volume-x" class="w-5 h-5"></i>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-sm font-semibold text-amber-900 dark:text-amber-200">No System Audio Track Detected</h3>
+            <p class="text-xs text-amber-800 dark:text-amber-300/90 mt-1 leading-relaxed">
+              Your screen was shared, but the <strong>"Also share system audio"</strong> checkbox in the browser popup was unchecked. Select <strong>Entire Screen</strong> and check <strong>Also share system audio</strong> to capture all laptop sound.
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button id="retryCaptureBtn" class="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium transition cursor-pointer">
+                Retry & Check System Audio Box
+              </button>
+              <button id="dismissBannerBtn" class="px-3 py-1.5 rounded-lg text-amber-800 dark:text-amber-300 hover:bg-amber-200/50 dark:hover:bg-amber-900/50 text-xs font-medium transition cursor-pointer">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Single Tab vs Whole System Notice Banner -->
+      <div id="singleTabWarningBanner" class="hidden rounded-2xl bg-sky-50 dark:bg-sky-950/50 border border-sky-300 dark:border-sky-800 p-4 shadow-xs">
+        <div class="flex items-start gap-3">
+          <div class="p-2 rounded-xl bg-sky-100 dark:bg-sky-900/60 text-sky-700 dark:text-sky-300 shrink-0">
+            <i data-lucide="app-window" class="w-5 h-5"></i>
+          </div>
+          <div class="flex-1">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-sm font-semibold text-sky-900 dark:text-sky-200">Single Browser Tab Detected (Not Whole Laptop Audio)</h3>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/20 text-sky-700 dark:text-sky-300">Tab-Only Mode</span>
+            </div>
+            <p class="text-xs text-sky-800 dark:text-sky-300/90 mt-1 leading-relaxed">
+              You shared a single browser tab, so desktop apps (Zoom, Air Class, Teams, media players) will not be heard. To capture <strong>100% of your laptop's system sound</strong>, switch to the <strong>Entire Screen</strong> tab in the picker and check <strong>Also share system audio</strong>.
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button id="switchToWholeSystemBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition cursor-pointer">
+                <i data-lucide="monitor-speaker" class="w-3.5 h-3.5"></i>
+                <span>Switch to Whole System Audio</span>
+              </button>
+              <button id="dismissTabWarningBtn" class="px-3 py-1.5 rounded-lg text-sky-800 dark:text-sky-300 hover:bg-sky-200/50 dark:hover:bg-sky-900/50 text-xs font-medium transition cursor-pointer">
+                Keep Single Tab
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audio Capture Control Deck -->
+      <section class="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 sm:p-5 shadow-sm space-y-4">
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <!-- Primary Recording & Input Controls -->
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button id="captureBtn" class="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] text-white font-semibold text-sm shadow-md shadow-indigo-500/25 transition cursor-pointer">
+              <i data-lucide="monitor-speaker" class="w-4 h-4"></i>
+              <span>Capture Whole System Sound</span>
+            </button>
+
+            <button id="pauseResumeBtn" class="hidden items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm shadow-xs transition cursor-pointer">
+              <i data-lucide="pause" class="w-4 h-4"></i>
+              <span>Pause</span>
+            </button>
+
+            <button id="stopBtn" class="hidden items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm shadow-xs transition cursor-pointer">
+              <i data-lucide="square" class="w-4 h-4 fill-current"></i>
+              <span>Stop & Process</span>
+            </button>
+
+            <!-- Upload Audio -->
+            <label class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 text-xs font-medium cursor-pointer transition" title="Upload MP3, WAV, M4A, or WebM audio">
+              <i data-lucide="upload" class="w-3.5 h-3.5 text-indigo-500"></i>
+              <span>Upload Audio</span>
+              <input id="audioUploadInput" type="file" accept="audio/*,video/webm,video/mp4" class="hidden" />
+            </label>
+
+            <!-- Quick Paste Text Mode Button -->
+            <button id="quickPasteModalBtn" class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 text-xs font-medium transition cursor-pointer" title="Paste raw text to run Grammar Correction & Summary without recording">
+              <i data-lucide="clipboard-paste" class="w-3.5 h-3.5 text-emerald-500"></i>
+              <span>Quick Paste Text</span>
+            </button>
+          </div>
+
+          <!-- Timer, Audio Player & Live Surface Source Readout -->
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- Audio Playback & Download Pill -->
+            <div id="audioPlayerContainer" class="hidden items-center gap-2 bg-slate-100 dark:bg-slate-800/90 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+              <audio id="recordedAudioPlayer" controls class="h-7 max-w-[200px] sm:max-w-[240px]"></audio>
+              <button id="downloadAudioBtn" class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600/15 hover:bg-indigo-600/25 text-indigo-600 dark:text-indigo-300 text-xs font-semibold transition cursor-pointer" title="Download recorded audio (.webm)">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>.webm</span>
+              </button>
+            </div>
+
+            <!-- Live Timer & Surface Detection Pill -->
+            <div class="flex items-center gap-3 bg-slate-50 dark:bg-[#0b0f19] px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700/80">
+              <div class="flex items-center gap-2">
+                <span id="recIndicator" class="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-600"></span>
+                <span id="timerDisplay" class="font-mono text-base font-semibold tracking-wider">00:00</span>
+              </div>
+              <div class="h-4 w-px bg-slate-200 dark:bg-slate-700"></div>
+              <div id="surfaceBadge" class="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <i id="surfaceIcon" data-lucide="monitor" class="w-3.5 h-3.5 text-indigo-500"></i>
+                <span id="audioSourceLabel">Idle</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inline Whole-System Audio Setup Guide Strip -->
+        <div class="rounded-xl bg-indigo-50/70 dark:bg-[#0b0f19]/90 border border-indigo-200/80 dark:border-indigo-500/25 px-3.5 py-2.5 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 text-xs">
+          <div class="flex flex-wrap items-center gap-2 text-slate-700 dark:text-slate-300">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-600 text-white font-semibold text-[11px]">
+              <i data-lucide="laptop" class="w-3 h-3"></i>
+              Whole-System Sound Guide
+            </span>
+            <span><strong>Windows (Chrome/Edge):</strong> Click <em>Capture Whole System Sound</em> → select <strong>"Entire Screen"</strong> tab → check <strong>"Also share system audio"</strong> → Share.</span>
+          </div>
+          <div class="text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
+            <strong>macOS:</strong> Chrome 130+ supports Screen System Audio, or use BlackHole loopback.
+          </div>
+        </div>
+
+        <!-- Secondary Toggles & Dual Level Meters Row -->
+        <div class="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-slate-100 dark:border-slate-700/60">
+          <div class="flex flex-wrap items-center gap-5">
+            <!-- Include Microphone Toggle -->
+            <label class="inline-flex items-center gap-2.5 cursor-pointer select-none">
+              <input id="includeMicToggle" type="checkbox" class="sr-only peer" />
+              <div class="w-9 h-5 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 relative"></div>
+              <span class="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <i data-lucide="mic" class="w-3.5 h-3.5 text-indigo-400"></i>
+                Include Microphone (Mix Both Sides)
+              </span>
+            </label>
+
+            <!-- Live Auto-Transcribe & Grammar Check Toggle -->
+            <label class="inline-flex items-center gap-2.5 cursor-pointer select-none" title="Processes rolling audio chunks every ~20s so transcript, grammar corrections, and summary update live">
+              <input id="liveChunkToggle" type="checkbox" checked class="sr-only peer" />
+              <div class="w-9 h-5 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600 relative"></div>
+              <span class="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
+                Live Auto-Transcribe & Grammar Check (20s)
+              </span>
+            </label>
+
+            <!-- Instant Browser Mic Captions -->
+            <label class="inline-flex items-center gap-2.5 cursor-pointer select-none" title="Instant local browser speech recognition captions for your microphone">
+              <input id="browserSpeechToggle" type="checkbox" class="sr-only peer" />
+              <div class="w-9 h-5 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-600 relative"></div>
+              <span class="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <i data-lucide="captions" class="w-3.5 h-3.5 text-sky-400"></i>
+                Instant Mic Captions
+              </span>
+            </label>
+          </div>
+
+          <!-- Independent System Audio & Mic Level Meters -->
+          <div class="flex items-center gap-3 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            <div class="flex items-center gap-1.5" title="Live System Sound Input Level">
+              <i data-lucide="volume-2" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <span>System</span>
+              <div class="w-16 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                <div id="sysLevelBar" class="h-full w-0 bg-emerald-500 transition-all duration-75"></div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5" title="Live Microphone Input Level">
+              <i data-lucide="mic" class="w-3.5 h-3.5 text-indigo-400"></i>
+              <span>Mic</span>
+              <div class="w-16 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                <div id="micLevelBar" class="h-full w-0 bg-indigo-500 transition-all duration-75"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Compact Real-Time Waveform Visualizer Bar -->
+        <div class="relative w-full h-16 rounded-xl bg-slate-950 overflow-hidden border border-slate-800 flex items-center justify-center">
+          <canvas id="visualizerCanvas" class="w-full h-full block"></canvas>
+          <div id="visualizerPlaceholder" class="absolute inset-0 flex items-center justify-center gap-2 text-slate-400 pointer-events-none px-4 text-center">
+            <i data-lucide="bar-chart-2" class="w-4 h-4 text-indigo-400"></i>
+            <p class="text-xs font-medium">Real-Time Whole-System Audio Visualizer — Click <span class="text-indigo-400 font-semibold">Capture Whole System Sound</span> or <span class="text-emerald-400 font-semibold">Quick Paste Text</span></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Workspace Header, View Switcher & Global Export Toolbar -->
+      <section class="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 sm:p-5 shadow-sm space-y-4 flex-1 flex flex-col">
+
+        <!-- Title & Controls Bar -->
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-700/70">
+          <!-- Session Title Input -->
+          <div class="flex-1 min-w-0">
+            <input id="noteTitleInput" type="text" value="Untitled System Audio Session" placeholder="Enter session, class, or meeting title..." class="w-full text-lg sm:text-xl font-bold bg-transparent border-none outline-none focus:ring-0 text-slate-900 dark:text-white placeholder-slate-400 truncate" />
+            <div class="flex flex-wrap items-center gap-2.5 mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <span id="noteDateLabel">Today</span>
+              <span>•</span>
+              <span id="noteDurationLabel">00:00 duration</span>
+              <span>•</span>
+              <span id="autoSaveLabel" class="text-emerald-600 dark:text-emerald-400 font-medium">Saved</span>
+            </div>
+          </div>
+
+          <!-- View Switcher, Re-run AI & Export Actions -->
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Layout Switcher: Side-by-Side Split vs Tabbed View -->
+            <div class="inline-flex rounded-xl bg-slate-100 dark:bg-[#0f172a] p-1 border border-slate-200 dark:border-slate-700">
+              <button id="splitViewBtn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#1e293b] text-indigo-600 dark:text-indigo-400 shadow-xs transition cursor-pointer" title="View all 3 panels side-by-side">
+                <i data-lucide="columns-3" class="w-3.5 h-3.5"></i>
+                <span class="hidden sm:inline">Split View</span>
+              </button>
+              <button id="tabViewBtn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer" title="Focus on one tab at a time">
+                <i data-lucide="layout-list" class="w-3.5 h-3.5"></i>
+                <span class="hidden sm:inline">Tabs</span>
+              </button>
+            </div>
+
+            <!-- Re-run Grammar & Summary -->
+            <button id="rerunAiBtn" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-xs transition cursor-pointer" title="Re-run Automated Grammar Corrector & Smart Summary on current text">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+              <span>Re-run Grammar & Summary</span>
+            </button>
+
+            <!-- Global Exports -->
+            <button id="exportMdBtn" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 text-xs font-medium transition cursor-pointer" title="Download all 3 sections as Markdown">
+              <i data-lucide="file-text" class="w-3.5 h-3.5 text-indigo-400"></i>
+              <span>.MD</span>
+            </button>
+
+            <button id="exportTxtBtn" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 text-xs font-medium transition cursor-pointer" title="Download all 3 sections as Plain Text">
+              <i data-lucide="file" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <span>.TXT</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab Selector Bar (Visible when in Tab Mode or on Mobile screens) -->
+        <div id="mobileOrTabBar" class="flex lg:hidden items-center gap-1.5 bg-slate-100 dark:bg-[#0f172a] p-1.5 rounded-xl border border-slate-200 dark:border-slate-700/80">
+          <button data-tab="raw" class="workspace-tab-btn flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold bg-white dark:bg-[#1e293b] text-indigo-600 dark:text-indigo-400 shadow-xs transition cursor-pointer">
+            <i data-lucide="align-left" class="w-3.5 h-3.5"></i>
+            <span>1. Verbatim Text</span>
+          </button>
+          <button data-tab="grammar" class="workspace-tab-btn flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer">
+            <i data-lucide="spell-check" class="w-3.5 h-3.5 text-emerald-500"></i>
+            <span>2. Grammar-Corrected</span>
+          </button>
+          <button data-tab="summary" class="workspace-tab-btn flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer">
+            <i data-lucide="list-checks" class="w-3.5 h-3.5 text-indigo-500"></i>
+            <span>3. Smart Summary</span>
+          </button>
+        </div>
+
+        <!-- AI Processing Banner -->
+        <div id="aiProgressBanner" class="hidden items-center justify-between gap-3 px-4 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-700 dark:text-indigo-200 text-xs">
+          <div class="flex items-center gap-3">
+            <svg class="animate-spin h-4 w-4 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span id="aiProgressText" class="font-medium">Gemini AI is transcribing audio, correcting grammar, and building your summary...</span>
+          </div>
+        </div>
+
+        <!-- =============================================================== -->
+        <!-- THREE-PANEL WORKSPACE: RAW TEXT | GRAMMAR-CORRECTED | SUMMARY   -->
+        <!-- =============================================================== -->
+        <div id="threePanelGrid" class="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-[480px]">
+
+          <!-- PANEL 1: RAW VERBATIM TRANSCRIPT -->
+          <div id="panelRaw" class="workspace-panel flex flex-col rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/70 dark:bg-[#0f172a] overflow-hidden">
+            <div class="px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 min-w-0">
+                <i data-lucide="align-left" class="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0"></i>
+                <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-200 truncate">1. Raw Transcript</h2>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span id="wordCountBadge" class="text-[11px] text-slate-500 dark:text-slate-400">0 words</span>
+                <button id="copyRawBtn" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-[11px] font-medium border border-slate-200 dark:border-slate-600 transition cursor-pointer" title="Copy Original Transcript">
+                  <i data-lucide="copy" class="w-3 h-3"></i>
+                  <span>Copy</span>
+                </button>
+              </div>
+            </div>
+
+            <textarea id="transcriptTextarea" placeholder="Timestamped verbatim transcript of your system audio will appear here...
+
+Tip: You can also type or paste raw text directly here and click 'Re-run Grammar & Summary'." class="flex-1 w-full p-4 bg-transparent resize-none outline-none leading-relaxed text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 font-mono text-[12.5px] min-h-[300px]"></textarea>
+          </div>
+
+          <!-- PANEL 2: AUTOMATED GRAMMAR-CORRECTED TEXT -->
+          <div id="panelGrammar" class="workspace-panel hidden lg:flex flex-col rounded-xl border border-emerald-500/30 dark:border-emerald-500/30 bg-slate-50/70 dark:bg-[#0f172a] overflow-hidden">
+            <!-- Header with Tone Selector & Copy -->
+            <div class="px-3.5 py-2.5 bg-emerald-500/10 dark:bg-emerald-950/40 border-b border-emerald-500/20 flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <i data-lucide="spell-check" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+                <h2 class="text-xs font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">2. Grammar-Corrected</h2>
+              </div>
+
+              <div class="flex items-center gap-1.5">
+                <!-- Correction Tone Selector -->
+                <select id="grammarToneSelect" class="text-[11px] font-medium px-2 py-1 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 outline-none focus:border-emerald-500 cursor-pointer" title="Choose Grammar Correction Style">
+                  <option value="standard">Standard Clean-Up</option>
+                  <option value="professional">Professional Polish</option>
+                </select>
+
+                <button id="copyGrammarBtn" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium transition cursor-pointer" title="Copy Clean Grammar-Corrected Text">
+                  <i data-lucide="copy" class="w-3 h-3"></i>
+                  <span>Copy</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Sub-toolbar: Clean View vs Diff View Toggle + Fix Counter -->
+            <div class="px-3.5 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+              <div class="inline-flex rounded-lg bg-slate-200/80 dark:bg-[#0f172a] p-0.5">
+                <button id="grammarCleanModeBtn" class="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-300 shadow-2xs transition cursor-pointer">
+                  Clean Corrected Text
+                </button>
+                <button id="grammarDiffModeBtn" class="px-2.5 py-1 rounded-md text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer">
+                  Show Grammar Fixes (Diff)
+                </button>
+              </div>
+              <span id="grammarFixesCountBadge" class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">0 fixes</span>
+            </div>
+
+            <!-- Grammar Corrected Editable Clean Textarea -->
+            <textarea id="grammarCleanTextarea" placeholder="Automated grammar, punctuation, and fluency-corrected text will appear here..." class="flex-1 w-full p-4 bg-transparent resize-none outline-none text-sm leading-relaxed text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 min-h-[200px]"></textarea>
+
+            <!-- Grammar Diff Highlight Container (Hidden when Clean Mode is active) -->
+            <div id="grammarDiffContainer" class="hidden flex-1 w-full p-4 overflow-y-auto text-sm leading-relaxed text-slate-800 dark:text-slate-200 min-h-[200px] whitespace-pre-wrap"></div>
+
+            <!-- Collapsible Grammar Fixes Log Drawer -->
+            <div class="border-t border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/80">
+              <button id="toggleFixesLogBtn" class="w-full px-3.5 py-2 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 transition cursor-pointer">
+                <span class="flex items-center gap-1.5">
+                  <i data-lucide="wand-2" class="w-3.5 h-3.5 text-emerald-500"></i>
+                  <span>Grammar Fixes Log & Explanations</span>
+                </span>
+                <i id="fixesLogChevron" data-lucide="chevron-up" class="w-4 h-4 text-slate-400 transition-transform"></i>
+              </button>
+              <div id="grammarFixesLogList" class="max-h-36 overflow-y-auto px-3.5 pb-3 space-y-2 text-xs">
+                <p class="text-[11px] text-slate-400 italic">No grammar corrections logged yet.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANEL 3: SMART SUMMARY & ACTION ITEMS -->
+          <div id="panelSummary" class="workspace-panel hidden lg:flex flex-col rounded-xl border border-indigo-500/30 dark:border-indigo-500/30 bg-slate-50/70 dark:bg-[#0f172a] overflow-hidden">
+            <div class="px-3.5 py-2.5 bg-indigo-500/10 dark:bg-indigo-950/40 border-b border-indigo-500/20 flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <i data-lucide="list-checks" class="w-4 h-4 text-indigo-500 shrink-0"></i>
+                <h2 class="text-xs font-semibold uppercase tracking-wider text-indigo-800 dark:text-indigo-300">3. Smart Summary</h2>
+              </div>
+              <button id="copySummaryBtn" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-medium transition cursor-pointer" title="Copy Smart Summary">
+                <i data-lucide="copy" class="w-3 h-3"></i>
+                <span>Copy</span>
+              </button>
+            </div>
+
+            <!-- Interactive Structured Summary Container -->
+            <div id="summaryContentContainer" class="flex-1 overflow-y-auto p-4 space-y-4 text-sm">
+              <!-- Executive Summary -->
+              <div class="space-y-1.5">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                  <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                  <span>Executive Summary</span>
+                </h3>
+                <textarea id="execSummaryTextarea" rows="4" placeholder="Concise overview of the captured audio or text..." class="w-full p-2.5 rounded-xl bg-white dark:bg-[#1e293b]/80 border border-slate-200 dark:border-slate-700/70 text-xs sm:text-sm leading-relaxed text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 resize-y"></textarea>
+              </div>
+
+              <!-- Key Takeaways -->
+              <div class="space-y-1.5">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i>
+                  <span>Key Takeaways</span>
+                </h3>
+                <textarea id="keyTakeawaysTextarea" rows="4" placeholder="• Bullet points of major insights..." class="w-full p-2.5 rounded-xl bg-white dark:bg-[#1e293b]/80 border border-slate-200 dark:border-slate-700/70 text-xs sm:text-sm leading-relaxed text-slate-800 dark:text-slate-200 outline-none focus:border-emerald-500 resize-y"></textarea>
+              </div>
+
+              <!-- Interactive Action Items -->
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                    <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
+                    <span>Action Items</span>
+                  </h3>
+                  <button id="addActionItemBtn" class="text-[11px] font-medium text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">+ Add Task</button>
+                </div>
+                <div id="actionItemsList" class="space-y-1.5">
+                  <p class="text-xs text-slate-400 italic">Action items with interactive checkboxes will appear here.</p>
+                </div>
+              </div>
+
+              <!-- Key Terms & Definitions -->
+              <div class="space-y-1.5">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 flex items-center gap-1.5">
+                  <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+                  <span>Key Terms & Definitions</span>
+                </h3>
+                <textarea id="keyTermsTextarea" rows="3" placeholder="Important vocabulary, tools, or concepts mentioned..." class="w-full p-2.5 rounded-xl bg-white dark:bg-[#1e293b]/80 border border-slate-200 dark:border-slate-700/70 text-xs sm:text-sm leading-relaxed text-slate-800 dark:text-slate-200 outline-none focus:border-sky-500 resize-y"></textarea>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Quick Paste Text Modal -->
+  <div id="quickPasteModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+    <div class="bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 rounded-xl bg-emerald-500/15 text-emerald-500">
+            <i data-lucide="clipboard-paste" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold">Quick Text / Paste Audio Transcript</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Paste rough notes or a transcript to auto-correct grammar and generate a summary</p>
+          </div>
+        </div>
+        <button id="closeQuickPasteBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <textarea id="quickPasteTextarea" rows="7" placeholder="Paste your raw meeting notes, lecture transcript, or rough draft here..." class="w-full p-3.5 rounded-xl bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-700 text-sm leading-relaxed outline-none focus:border-indigo-500"></textarea>
+
+      <div class="flex items-center justify-between gap-3 pt-1">
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-medium text-slate-500 dark:text-slate-400">Correction Tone:</label>
+          <select id="modalGrammarToneSelect" class="text-xs font-medium px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-700 outline-none">
+            <option value="standard">Standard Clean-Up</option>
+            <option value="professional">Professional Polish</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="cancelQuickPasteBtn" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">Cancel</button>
+          <button id="runQuickPasteBtn" class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition cursor-pointer">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+            <span>Correct Grammar & Summarize</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Setup Guide Modal -->
+  <div id="guideModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+    <div class="bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 rounded-xl bg-indigo-500/15 text-indigo-500">
+            <i data-lucide="monitor-speaker" class="w-5 h-5"></i>
+          </div>
+          <h3 class="text-base font-bold">How to Capture Laptop System Sound</h3>
+        </div>
+        <button id="closeGuideModalBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-sm text-slate-600 dark:text-slate-300">
+        <p>Browsers require screen or tab sharing permission to securely route internal laptop audio into a web application:</p>
+
+        <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-700/80 space-y-3">
+          <div class="flex items-start gap-3">
+            <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
+            <div>
+              <p class="font-semibold text-slate-900 dark:text-white">Choose Browser Tab or Entire Screen</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Click <strong>Capture System Sound</strong> and select a Chrome/Edge tab (for YouTube, Google Meet, Zoom Web) or <strong>Entire Screen</strong> (for desktop apps).</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <span class="w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
+            <div>
+              <p class="font-semibold text-slate-900 dark:text-white">Enable "Share system audio" / "Share tab audio"</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Turn ON the audio toggle switch at the bottom of the browser popup before clicking Share. Video tracks are immediately stopped for privacy.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <button id="gotItGuideBtn" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition cursor-pointer">
+          Got it
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    lucide.createIcons();
+
+    // =========================================================================
+    // CONFIGURATION & STATE
+    // =========================================================================
+    const apiKey = ""; // Automatically provided in runtime
+    const GEMINI_MODEL = "gemini-2.5-flash";
+
+    const state = {
+      isRecording: false,
+      isPaused: false,
+      startTime: 0,
+      pausedDuration: 0,
+      lastPauseStart: 0,
+      timerInterval: null,
+      chunkInterval: null,
+
+      // Audio Streams & Visualizer
+      displayStream: null,
+      micStream: null,
+      audioContext: null,
+      analyserNode: null,
+      sysAnalyserNode: null,
+      micAnalyserNode: null,
+      animationFrameId: null,
+      mediaRecorder: null,
+      audioChunks: [],
+      recordedBlob: null,
+      recordedAudioUrl: null,
+      mimeType: "audio/webm",
+      capturedSurfaceType: "unknown", // "monitor" | "browser" | "window"
+
+      // Browser Speech Recognition fallback
+      speechRecognition: null,
+
+      // View & Grammar Modes
+      layoutMode: "split", // "split" | "tabs"
+      activeTab: "raw",    // "raw" | "grammar" | "summary"
+      grammarViewMode: "clean", // "clean" | "diff"
+      fixesLogExpanded: true,
+
+      // Session Storage
+      notes: [],
+      activeNoteId: null,
+      isProcessingAI: false,
+    };
+
+    // =========================================================================
+    // DOM REFERENCES
+    // =========================================================================
+    const el = {
+      themeToggleBtn: document.getElementById("themeToggleBtn"),
+      openGuideBtn: document.getElementById("openGuideBtn"),
+      guideModal: document.getElementById("guideModal"),
+      closeGuideModalBtn: document.getElementById("closeGuideModalBtn"),
+      gotItGuideBtn: document.getElementById("gotItGuideBtn"),
+
+      quickPasteModalBtn: document.getElementById("quickPasteModalBtn"),
+      quickPasteModal: document.getElementById("quickPasteModal"),
+      closeQuickPasteBtn: document.getElementById("closeQuickPasteBtn"),
+      cancelQuickPasteBtn: document.getElementById("cancelQuickPasteBtn"),
+      runQuickPasteBtn: document.getElementById("runQuickPasteBtn"),
+      quickPasteTextarea: document.getElementById("quickPasteTextarea"),
+      modalGrammarToneSelect: document.getElementById("modalGrammarToneSelect"),
+
+      mobileSidebarBtn: document.getElementById("mobileSidebarBtn"),
+      notesSidebar: document.getElementById("notesSidebar"),
+      closeSidebarBtn: document.getElementById("closeSidebarBtn"),
+      sidebarBackdrop: document.getElementById("sidebarBackdrop"),
+      newNoteBtn: document.getElementById("newNoteBtn"),
+      searchNotesInput: document.getElementById("searchNotesInput"),
+      savedNotesList: document.getElementById("savedNotesList"),
+      notesCountLabel: document.getElementById("notesCountLabel"),
+
+      missingAudioBanner: document.getElementById("missingAudioBanner"),
+      retryCaptureBtn: document.getElementById("retryCaptureBtn"),
+      dismissBannerBtn: document.getElementById("dismissBannerBtn"),
+
+      singleTabWarningBanner: document.getElementById("singleTabWarningBanner"),
+      switchToWholeSystemBtn: document.getElementById("switchToWholeSystemBtn"),
+      dismissTabWarningBtn: document.getElementById("dismissTabWarningBtn"),
+
+      captureBtn: document.getElementById("captureBtn"),
+      pauseResumeBtn: document.getElementById("pauseResumeBtn"),
+      stopBtn: document.getElementById("stopBtn"),
+      audioUploadInput: document.getElementById("audioUploadInput"),
+
+      includeMicToggle: document.getElementById("includeMicToggle"),
+      liveChunkToggle: document.getElementById("liveChunkToggle"),
+      browserSpeechToggle: document.getElementById("browserSpeechToggle"),
+
+      sysLevelBar: document.getElementById("sysLevelBar"),
+      micLevelBar: document.getElementById("micLevelBar"),
+
+      statusBadge: document.getElementById("statusBadge"),
+      statusDot: document.getElementById("statusDot"),
+      statusText: document.getElementById("statusText"),
+      recIndicator: document.getElementById("recIndicator"),
+      timerDisplay: document.getElementById("timerDisplay"),
+      surfaceBadge: document.getElementById("surfaceBadge"),
+      audioSourceLabel: document.getElementById("audioSourceLabel"),
+
+      visualizerCanvas: document.getElementById("visualizerCanvas"),
+      visualizerPlaceholder: document.getElementById("visualizerPlaceholder"),
+
+      audioPlayerContainer: document.getElementById("audioPlayerContainer"),
+      recordedAudioPlayer: document.getElementById("recordedAudioPlayer"),
+      downloadAudioBtn: document.getElementById("downloadAudioBtn"),
+
+      noteTitleInput: document.getElementById("noteTitleInput"),
+      noteDateLabel: document.getElementById("noteDateLabel"),
+      noteDurationLabel: document.getElementById("noteDurationLabel"),
+      autoSaveLabel: document.getElementById("autoSaveLabel"),
+
+      splitViewBtn: document.getElementById("splitViewBtn"),
+      tabViewBtn: document.getElementById("tabViewBtn"),
+      mobileOrTabBar: document.getElementById("mobileOrTabBar"),
+      threePanelGrid: document.getElementById("threePanelGrid"),
+      panelRaw: document.getElementById("panelRaw"),
+      panelGrammar: document.getElementById("panelGrammar"),
+      panelSummary: document.getElementById("panelSummary"),
+
+      rerunAiBtn: document.getElementById("rerunAiBtn"),
+      exportMdBtn: document.getElementById("exportMdBtn"),
+      exportTxtBtn: document.getElementById("exportTxtBtn"),
+      aiProgressBanner: document.getElementById("aiProgressBanner"),
+      aiProgressText: document.getElementById("aiProgressText"),
+
+      // Panel 1: Raw Transcript
+      transcriptTextarea: document.getElementById("transcriptTextarea"),
+      wordCountBadge: document.getElementById("wordCountBadge"),
+      copyRawBtn: document.getElementById("copyRawBtn"),
+
+      // Panel 2: Grammar-Corrected
+      grammarToneSelect: document.getElementById("grammarToneSelect"),
+      copyGrammarBtn: document.getElementById("copyGrammarBtn"),
+      grammarCleanModeBtn: document.getElementById("grammarCleanModeBtn"),
+      grammarDiffModeBtn: document.getElementById("grammarDiffModeBtn"),
+      grammarFixesCountBadge: document.getElementById("grammarFixesCountBadge"),
+      grammarCleanTextarea: document.getElementById("grammarCleanTextarea"),
+      grammarDiffContainer: document.getElementById("grammarDiffContainer"),
+      toggleFixesLogBtn: document.getElementById("toggleFixesLogBtn"),
+      fixesLogChevron: document.getElementById("fixesLogChevron"),
+      grammarFixesLogList: document.getElementById("grammarFixesLogList"),
+
+      // Panel 3: Smart Summary
+      copySummaryBtn: document.getElementById("copySummaryBtn"),
+      execSummaryTextarea: document.getElementById("execSummaryTextarea"),
+      keyTakeawaysTextarea: document.getElementById("keyTakeawaysTextarea"),
+      addActionItemBtn: document.getElementById("addActionItemBtn"),
+      actionItemsList: document.getElementById("actionItemsList"),
+      keyTermsTextarea: document.getElementById("keyTermsTextarea"),
+
+      toastContainer: document.getElementById("toastContainer"),
+    };
+
+    // =========================================================================
+    // AUDIO VISUALIZER & DUAL LEVEL METERS (WEB AUDIO API ANALYSERNODE)
+    // =========================================================================
+    function resizeVisualizerCanvas() {
+      const canvas = el.visualizerCanvas;
+      if (!canvas) return;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+    }
+
+    window.addEventListener("resize", resizeVisualizerCanvas);
+    window.addEventListener("load", () => {
+      resizeVisualizerCanvas();
+      applyWorkspaceLayout();
+    });
+
+    function computeRmsPercent(analyser) {
+      if (!analyser) return 0;
+      const arr = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteTimeDomainData(arr);
+      let sum = 0;
+      for (let i = 0; i < arr.length; i++) {
+        const v = (arr[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / arr.length);
+      return Math.min(100, Math.round(rms * 360));
+    }
+
+    function startVisualizer(analyser) {
+      resizeVisualizerCanvas();
+      el.visualizerPlaceholder.classList.add("hidden");
+
+      const canvas = el.visualizerCanvas;
+      const ctx = canvas.getContext("2d");
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      function draw() {
+        state.animationFrameId = requestAnimationFrame(draw);
+        analyser.getByteFrequencyData(dataArray);
+
+        // Update independent System & Mic level bars
+        if (el.sysLevelBar) {
+          el.sysLevelBar.style.width = `${state.isPaused ? 0 : computeRmsPercent(state.sysAnalyserNode)}%`;
+        }
+        if (el.micLevelBar) {
+          el.micLevelBar.style.width = `${state.isPaused ? 0 : computeRmsPercent(state.micAnalyserNode)}%`;
+        }
+
+        const width = canvas.width;
+        const height = canvas.height;
+        ctx.clearRect(0, 0, width, height);
+
+        const barCount = 72;
+        const step = Math.floor(bufferLength / barCount);
+        const totalBarSpace = width / barCount;
+        const barWidth = Math.max(2 * window.devicePixelRatio, totalBarSpace * 0.62);
+
+        for (let i = 0; i < barCount; i++) {
+          const val = dataArray[i * step] || 0;
+          const percent = val / 255;
+          const barHeight = Math.max(3 * window.devicePixelRatio, percent * (height * 0.82));
+
+          const x = i * totalBarSpace + (totalBarSpace - barWidth) / 2;
+          const y = (height - barHeight) / 2;
+
+          const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
+          gradient.addColorStop(0, "#818cf8");
+          gradient.addColorStop(0.5, "#6366f1");
+          gradient.addColorStop(1, "#10b981");
+
+          ctx.fillStyle = state.isPaused ? "rgba(245, 158, 11, 0.55)" : gradient;
+          ctx.beginPath();
+          ctx.roundRect(x, y, barWidth, barHeight, 4 * window.devicePixelRatio);
+          ctx.fill();
+        }
+      }
+
+      draw();
+    }
+
+    function stopVisualizer() {
+      if (state.animationFrameId) {
+        cancelAnimationFrame(state.animationFrameId);
+        state.animationFrameId = null;
+      }
+      if (el.sysLevelBar) el.sysLevelBar.style.width = "0%";
+      if (el.micLevelBar) el.micLevelBar.style.width = "0%";
+      const canvas = el.visualizerCanvas;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      el.visualizerPlaceholder.classList.remove("hidden");
+    }
+
+    // =========================================================================
+    // WHOLE-SYSTEM SOUND + OPTIONAL MIC CAPTURE ENGINE
+    // =========================================================================
+    async function startSystemAudioCapture() {
+      el.missingAudioBanner.classList.add("hidden");
+      el.singleTabWarningBanner.classList.add("hidden");
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        showToast("Your browser does not support system audio capture via getDisplayMedia.", "error");
+        return;
+      }
+
+      try {
+        // Configure getDisplayMedia to favor Entire Screen / Whole-System Audio
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            displaySurface: "monitor",
+          },
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+            suppressLocalAudioPlayback: false,
+          },
+          systemAudio: "include",
+          surfaceSwitching: "include",
+          selfBrowserSurface: "exclude",
+          preferCurrentTab: false,
+        });
+
+        // Inspect displaySurface before stopping the video track
+        const videoTrack = displayStream.getVideoTracks()[0];
+        const videoSettings = videoTrack ? videoTrack.getSettings() : {};
+        const surfaceType = videoSettings.displaySurface || "unknown";
+        state.capturedSurfaceType = surfaceType;
+
+        // Immediately stop the video track once inspected so zero screen video is recorded
+        displayStream.getVideoTracks().forEach(track => track.stop());
+
+        const systemAudioTracks = displayStream.getAudioTracks();
+        if (systemAudioTracks.length === 0) {
+          displayStream.getTracks().forEach(t => t.stop());
+          el.missingAudioBanner.classList.remove("hidden");
+          showToast("No system audio track found. Select 'Entire Screen' and check 'Also share system audio'.", "warning");
+          return;
+        }
+
+        state.displayStream = displayStream;
+
+        systemAudioTracks[0].onended = () => {
+          if (state.isRecording) stopRecordingAndTranscribe();
+        };
+
+        let micStream = null;
+        if (el.includeMicToggle.checked) {
+          try {
+            micStream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+              }
+            });
+            state.micStream = micStream;
+          } catch (micErr) {
+            showToast("Microphone permission denied. Recording Whole System Audio only.", "warning");
+            el.includeMicToggle.checked = false;
+          }
+        }
+
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioCtx();
+        state.audioContext = audioCtx;
+
+        const destination = audioCtx.createMediaStreamDestination();
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+
+        const sysAnalyser = audioCtx.createAnalyser();
+        sysAnalyser.fftSize = 128;
+
+        const systemSource = audioCtx.createMediaStreamSource(new MediaStream(systemAudioTracks));
+        systemSource.connect(destination);
+        systemSource.connect(analyser);
+        systemSource.connect(sysAnalyser);
+
+        state.sysAnalyserNode = sysAnalyser;
+        state.micAnalyserNode = null;
+
+        const hasMic = Boolean(micStream && micStream.getAudioTracks().length > 0);
+        if (hasMic) {
+          const micAnalyser = audioCtx.createAnalyser();
+          micAnalyser.fftSize = 128;
+
+          const micSource = audioCtx.createMediaStreamSource(micStream);
+          micSource.connect(destination);
+          micSource.connect(analyser);
+          micSource.connect(micAnalyser);
+          state.micAnalyserNode = micAnalyser;
+        }
+
+        // Update live surface status badge & warn if only a single browser tab was selected
+        if (surfaceType === "monitor") {
+          el.audioSourceLabel.textContent = hasMic ? "Whole System + Mic" : "Whole System Audio";
+          el.surfaceBadge.className = "flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400";
+        } else if (surfaceType === "browser") {
+          el.audioSourceLabel.textContent = hasMic ? "Single Tab + Mic" : "Single Browser Tab";
+          el.surfaceBadge.className = "flex items-center gap-1.5 text-xs font-semibold text-sky-600 dark:text-sky-400";
+          el.singleTabWarningBanner.classList.remove("hidden");
+        } else {
+          el.audioSourceLabel.textContent = hasMic ? "System + Mic" : "System Audio";
+          el.surfaceBadge.className = "flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400";
+        }
+
+        state.analyserNode = analyser;
+
+        const supportedTypes = [
+          "audio/webm;codecs=opus",
+          "audio/webm",
+          "audio/ogg;codecs=opus",
+          "audio/mp4"
+        ];
+        const chosenMime = supportedTypes.find(type => MediaRecorder.isTypeSupported(type)) || "";
+        state.mimeType = chosenMime || "audio/webm";
+
+        state.audioChunks = [];
+        const recorder = chosenMime
+          ? new MediaRecorder(destination.stream, { mimeType: chosenMime })
+          : new MediaRecorder(destination.stream);
+
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            state.audioChunks.push(event.data);
+          }
+        };
+
+        recorder.onstop = handleRecordingStopped;
+        recorder.start(1000);
+        state.mediaRecorder = recorder;
+
+        state.isRecording = true;
+        state.isPaused = false;
+        state.startTime = Date.now();
+        state.pausedDuration = 0;
+
+        updateCaptureControlsUI(true);
+        startVisualizer(analyser);
+        startTimer();
+
+        if (el.liveChunkToggle.checked) {
+          startLiveChunkedTranscription();
+        }
+        if (el.browserSpeechToggle.checked) {
+          startBrowserSpeechRecognition();
+        }
+
+        if (surfaceType === "monitor") {
+          setAppStatus("Listening to Whole System Sound", "recording");
+          showToast("Whole-system audio capture active! Capturing all laptop sound.", "success");
+        } else if (surfaceType === "browser") {
+          setAppStatus("Listening to Single Tab Audio", "recording");
+          showToast("Single browser tab audio active. Switch to 'Entire Screen' for full laptop sound.", "info");
+        } else {
+          setAppStatus("Listening to System Audio", "recording");
+          showToast("System audio capture active!", "success");
+        }
+
+      } catch (err) {
+        if (err.name === "NotAllowedError") {
+          showToast("Capture prompt was cancelled.", "info");
+        } else {
+          showToast(`Capture failed: ${err.message}`, "error");
+        }
+      }
+    }
+
+    async function switchToWholeSystemCapture() {
+      // Cleanly abort current single-tab capture without overwriting notes, then re-open picker
+      if (state.isRecording) {
+        state.isRecording = false;
+        state.isPaused = false;
+        clearInterval(state.timerInterval);
+        clearInterval(state.chunkInterval);
+        stopBrowserSpeechRecognition();
+        stopVisualizer();
+
+        if (state.mediaRecorder && state.mediaRecorder.state !== "inactive") {
+          state.mediaRecorder.onstop = null;
+          state.mediaRecorder.stop();
+        }
+        if (state.displayStream) {
+          state.displayStream.getTracks().forEach(t => t.stop());
+          state.displayStream = null;
+        }
+        if (state.micStream) {
+          state.micStream.getTracks().forEach(t => t.stop());
+          state.micStream = null;
+        }
+        if (state.audioContext) {
+          state.audioContext.close().catch(() => {});
+          state.audioContext = null;
+        }
+        updateCaptureControlsUI(false);
+      }
+      await startSystemAudioCapture();
+    }
+
+    function setAppStatus(status, mode = "idle") {
+      el.statusText.textContent = status;
+      el.statusDot.className = "w-2 h-2 rounded-full ";
+      el.statusBadge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ";
+
+      if (mode === "recording") {
+        el.statusDot.className += "bg-rose-500 animate-ping";
+        el.statusBadge.className += "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30";
+      } else if (mode === "paused") {
+        el.statusDot.className += "bg-amber-500";
+        el.statusBadge.className += "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30";
+      } else if (mode === "processing") {
+        el.statusDot.className += "bg-indigo-500 animate-pulse";
+        el.statusBadge.className += "bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/30";
+      } else {
+        el.statusDot.className += "bg-emerald-500";
+        el.statusBadge.className += "bg-slate-100 text-slate-700 dark:bg-[#1e293b] dark:text-slate-300 border-slate-200 dark:border-slate-700";
+      }
+    }
+
+    function formatDuration(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+
+    function updateWordCount() {
+      const text = el.transcriptTextarea.value.trim();
+      const count = text ? text.split(/\s+/).length : 0;
+      el.wordCountBadge.textContent = `${count} word${count === 1 ? "" : "s"}`;
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str || "";
+      return div.innerHTML;
+    }
+
+    // =========================================================================
+    // LAYOUT SWITCHER (SIDE-BY-SIDE SPLIT VIEW VS TABBED VIEW)
+    // =========================================================================
+    function applyWorkspaceLayout() {
+      const isDesktop = window.innerWidth >= 1024;
+
+      if (state.layoutMode === "split" && isDesktop) {
+        el.mobileOrTabBar.classList.add("hidden");
+        el.mobileOrTabBar.classList.remove("flex");
+        el.threePanelGrid.classList.remove("lg:grid-cols-1");
+        el.threePanelGrid.classList.add("lg:grid-cols-3");
+
+        [el.panelRaw, el.panelGrammar, el.panelSummary].forEach(panel => {
+          panel.classList.remove("hidden");
+          panel.classList.add("flex");
+        });
+
+        el.splitViewBtn.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#1e293b] text-indigo-600 dark:text-indigo-400 shadow-xs transition cursor-pointer";
+        el.tabViewBtn.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer";
+      } else {
+        // Tabbed mode (or mobile responsive screen)
+        el.mobileOrTabBar.classList.remove("hidden");
+        el.mobileOrTabBar.classList.add("flex");
+        el.threePanelGrid.classList.remove("lg:grid-cols-3");
+        el.threePanelGrid.classList.add("lg:grid-cols-1");
+
+        const panelMap = {
+          raw: el.panelRaw,
+          grammar: el.panelGrammar,
+          summary: el.panelSummary,
+        };
+
+        Object.entries(panelMap).forEach(([key, panel]) => {
+          if (key === state.activeTab) {
+            panel.classList.remove("hidden");
+            panel.classList.add("flex");
+          } else {
+            panel.classList.add("hidden");
+            panel.classList.remove("flex");
+          }
+        });
+
+        document.querySelectorAll(".workspace-tab-btn").forEach(btn => {
+          const isSelected = btn.dataset.tab === state.activeTab;
+          btn.className = isSelected
+            ? "workspace-tab-btn flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold bg-white dark:bg-[#1e293b] text-indigo-600 dark:text-indigo-400 shadow-xs transition cursor-pointer"
+            : "workspace-tab-btn flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer";
+        });
+
+        if (state.layoutMode === "tabs") {
+          el.tabViewBtn.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#1e293b] text-indigo-600 dark:text-indigo-400 shadow-xs transition cursor-pointer";
+          el.splitViewBtn.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer";
+        }
+      }
+    }
+
+    el.splitViewBtn.addEventListener("click", () => {
+      state.layoutMode = "split";
+      applyWorkspaceLayout();
+    });
+
+    el.tabViewBtn.addEventListener("click", () => {
+      state.layoutMode = "tabs";
+      applyWorkspaceLayout();
+    });
+
+    document.querySelectorAll(".workspace-tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.activeTab = btn.dataset.tab;
+        applyWorkspaceLayout();
+      });
+    });
+
+    window.addEventListener("resize", applyWorkspaceLayout);
+
+    // =========================================================================
+    // WORD-LEVEL INLINE DIFF ENGINE & GRAMMAR FIXES RENDERER
+    // =========================================================================
+    function computeWordDiffHtml(originalText, correctedText) {
+      if (!originalText && !correctedText) return '<span class="text-slate-400 italic">No text available to compare.</span>';
+      if (!originalText) return `<span class="diff-ins">${escapeHtml(correctedText)}</span>`;
+      if (!correctedText) return escapeHtml(originalText);
+
+      // Tokenize preserving whitespace
+      const origTokens = originalText.split(/(\s+)/);
+      const corrTokens = correctedText.split(/(\s+)/);
+
+      // Guard against huge texts by falling back to sentence-level diff if > 1400 tokens
+      if (origTokens.length * corrTokens.length > 2000000) {
+        return computeSentenceDiffHtml(originalText, correctedText);
+      }
+
+      const n = origTokens.length;
+      const m = corrTokens.length;
+      const dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+
+      for (let i = n - 1; i >= 0; i--) {
+        for (let j = m - 1; j >= 0; j--) {
+          if (origTokens[i] === corrTokens[j]) {
+            dp[i][j] = 1 + dp[i + 1][j + 1];
+          } else {
+            dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+          }
+        }
+      }
+
+      let i = 0, j = 0;
+      let html = "";
+      while (i < n && j < m) {
+        if (origTokens[i] === corrTokens[j]) {
+          html += escapeHtml(origTokens[i]);
+          i++;
+          j++;
+        } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+          const tok = origTokens[i];
+          html += /^\s+$/.test(tok) ? tok : `<span class="diff-del">${escapeHtml(tok)}</span>`;
+          i++;
+        } else {
+          const tok = corrTokens[j];
+          html += /^\s+$/.test(tok) ? tok : `<span class="diff-ins">${escapeHtml(tok)}</span>`;
+          j++;
+        }
+      }
+
+      while (i < n) {
+        const tok = origTokens[i++];
+        html += /^\s+$/.test(tok) ? tok : `<span class="diff-del">${escapeHtml(tok)}</span>`;
+      }
+      while (j < m) {
+        const tok = corrTokens[j++];
+        html += /^\s+$/.test(tok) ? tok : `<span class="diff-ins">${escapeHtml(tok)}</span>`;
+      }
+
+      return html;
+    }
+
+    function computeSentenceDiffHtml(originalText, correctedText) {
+      const origSents = originalText.split(/(?<=[.!?])\s+/);
+      const corrSents = correctedText.split(/(?<=[.!?])\s+/);
+      const maxLen = Math.max(origSents.length, corrSents.length);
+      let out = [];
+      for (let k = 0; k < maxLen; k++) {
+        const o = origSents[k] || "";
+        const c = corrSents[k] || "";
+        if (o === c) {
+          out.push(escapeHtml(c));
+        } else {
+          if (o) out.push(`<span class="diff-del">${escapeHtml(o)}</span>`);
+          if (c) out.push(`<span class="diff-ins">${escapeHtml(c)}</span>`);
+        }
+      }
+      return out.join(" ");
+    }
+
+    function setGrammarDisplayMode(mode) {
+      state.grammarViewMode = mode;
+      if (mode === "clean") {
+        el.grammarCleanTextarea.classList.remove("hidden");
+        el.grammarDiffContainer.classList.add("hidden");
+        el.grammarCleanModeBtn.className = "px-2.5 py-1 rounded-md text-[11px] font-semibold bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-300 shadow-2xs transition cursor-pointer";
+        el.grammarDiffModeBtn.className = "px-2.5 py-1 rounded-md text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer";
+      } else {
+        el.grammarCleanTextarea.classList.add("hidden");
+        el.grammarDiffContainer.classList.remove("hidden");
+        el.grammarDiffContainer.innerHTML = computeWordDiffHtml(
+          el.transcriptTextarea.value,
+          el.grammarCleanTextarea.value
+        );
+        el.grammarDiffModeBtn.className = "px-2.5 py-1 rounded-md text-[11px] font-semibold bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-300 shadow-2xs transition cursor-pointer";
+        el.grammarCleanModeBtn.className = "px-2.5 py-1 rounded-md text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer";
+      }
+    }
+
+    el.grammarCleanModeBtn.addEventListener("click", () => setGrammarDisplayMode("clean"));
+    el.grammarDiffModeBtn.addEventListener("click", () => setGrammarDisplayMode("diff"));
+
+    el.toggleFixesLogBtn.addEventListener("click", () => {
+      state.fixesLogExpanded = !state.fixesLogExpanded;
+      if (state.fixesLogExpanded) {
+        el.grammarFixesLogList.classList.remove("hidden");
+        el.fixesLogChevron.classList.remove("rotate-180");
+      } else {
+        el.grammarFixesLogList.classList.add("hidden");
+        el.fixesLogChevron.classList.add("rotate-180");
+      }
+    });
+
+    function renderGrammarFixesLog(fixes = []) {
+      el.grammarFixesCountBadge.textContent = `${fixes.length} fix${fixes.length === 1 ? "" : "es"}`;
+      if (!fixes || fixes.length === 0) {
+        el.grammarFixesLogList.innerHTML = `<p class="text-[11px] text-slate-400 italic">No grammar corrections logged yet.</p>`;
+        return;
+      }
+
+      el.grammarFixesLogList.innerHTML = fixes.map(fix => `
+        <div class="p-2 rounded-lg bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700/80 space-y-1">
+          <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+            <span class="diff-del">${escapeHtml(fix.original)}</span>
+            <span class="text-slate-400">→</span>
+            <span class="diff-ins">${escapeHtml(fix.corrected)}</span>
+          </div>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">${escapeHtml(fix.reason)}</p>
+        </div>
+      `).join("");
+    }
+
+    // =========================================================================
+    // INTERACTIVE ACTION ITEMS RENDERER
+    // =========================================================================
+    function renderActionItems(items = []) {
+      if (!items || items.length === 0) {
+        el.actionItemsList.innerHTML = `<p class="text-xs text-slate-400 italic">No action items yet. Click "+ Add Task" or run AI Summary.</p>`;
+        return;
+      }
+
+      el.actionItemsList.innerHTML = "";
+      items.forEach((item, idx) => {
+        const row = document.createElement("div");
+        row.className = "flex items-start gap-2 p-2 rounded-xl bg-white dark:bg-[#1e293b]/80 border border-slate-200 dark:border-slate-700/70 group";
+        row.innerHTML = `
+          <input type="checkbox" ${item.done ? "checked" : ""} class="mt-0.5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+          <input type="text" value="${escapeHtml(item.text)}" class="flex-1 bg-transparent border-none outline-none text-xs sm:text-[13px] ${item.done ? "line-through text-slate-400" : "text-slate-800 dark:text-slate-200"}" />
+          <button class="delete-task-btn opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 p-0.5 transition cursor-pointer" title="Remove task">
+            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+          </button>
+        `;
+
+        const checkbox = row.querySelector('input[type="checkbox"]');
+        const textInput = row.querySelector('input[type="text"]');
+        const delBtn = row.querySelector(".delete-task-btn");
+
+        checkbox.addEventListener("change", () => {
+          const note = getActiveNote();
+          if (!note) return;
+          note.actionItems[idx].done = checkbox.checked;
+          saveNotesToStorage();
+          renderActionItems(note.actionItems);
+        });
+
+        textInput.addEventListener("input", () => {
+          const note = getActiveNote();
+          if (!note) return;
+          note.actionItems[idx].text = textInput.value;
+          saveNotesToStorage();
+        });
+
+        delBtn.addEventListener("click", () => {
+          const note = getActiveNote();
+          if (!note) return;
+          note.actionItems.splice(idx, 1);
+          saveNotesToStorage();
+          renderActionItems(note.actionItems);
+        });
+
+        el.actionItemsList.appendChild(row);
+      });
+      lucide.createIcons({ root: el.actionItemsList });
+    }
+
+    el.addActionItemBtn.addEventListener("click", () => {
+      const note = getActiveNote();
+      if (!note) return;
+      if (!Array.isArray(note.actionItems)) note.actionItems = [];
+      note.actionItems.push({ text: "New follow-up task...", done: false });
+      saveNotesToStorage();
+      renderActionItems(note.actionItems);
+    });
+
+    // =========================================================================
+    // THEME, MODALS & SIDEBAR
+    // =========================================================================
+    function initTheme() {
+      const savedTheme = localStorage.getItem("sant_theme");
+      if (savedTheme === "light") {
+        document.documentElement.classList.remove("dark");
+      } else {
+        // Default to dark studio theme
+        document.documentElement.classList.add("dark");
+      }
+    }
+
+    el.themeToggleBtn.addEventListener("click", () => {
+      const isDark = document.documentElement.classList.toggle("dark");
+      localStorage.setItem("sant_theme", isDark ? "dark" : "light");
+    });
+
+    // Audio Setup Guide Modal
+    el.openGuideBtn.addEventListener("click", () => {
+      el.guideModal.classList.remove("hidden");
+      el.guideModal.classList.add("flex");
+    });
+    [el.closeGuideModalBtn, el.gotItGuideBtn].forEach(btn => {
+      btn.addEventListener("click", () => {
+        el.guideModal.classList.add("hidden");
+        el.guideModal.classList.remove("flex");
+      });
+    });
+
+    // Quick Paste Text Modal
+    el.quickPasteModalBtn.addEventListener("click", () => {
+      el.quickPasteTextarea.value = el.transcriptTextarea.value || "";
+      el.modalGrammarToneSelect.value = el.grammarToneSelect.value;
+      el.quickPasteModal.classList.remove("hidden");
+      el.quickPasteModal.classList.add("flex");
+      el.quickPasteTextarea.focus();
+    });
+    [el.closeQuickPasteBtn, el.cancelQuickPasteBtn].forEach(btn => {
+      btn.addEventListener("click", () => {
+        el.quickPasteModal.classList.add("hidden");
+        el.quickPasteModal.classList.remove("flex");
+      });
+    });
+
+    el.runQuickPasteBtn.addEventListener("click", async () => {
+      const rawText = el.quickPasteTextarea.value.trim();
+      if (!rawText) {
+        showToast("Please paste or type some text first.", "warning");
+        return;
+      }
+      el.grammarToneSelect.value = el.modalGrammarToneSelect.value;
+      el.transcriptTextarea.value = rawText;
+      updateCurrentNoteField("transcript", rawText);
+      updateWordCount();
+
+      el.quickPasteModal.classList.add("hidden");
+      el.quickPasteModal.classList.remove("flex");
+
+      await processTextWithGemini(rawText);
+    });
+
+    function toggleMobileSidebar(show) {
+      if (show) {
+        el.notesSidebar.classList.remove("-translate-x-full");
+        el.sidebarBackdrop.classList.remove("hidden");
+      } else {
+        el.notesSidebar.classList.add("-translate-x-full");
+        el.sidebarBackdrop.classList.add("hidden");
+      }
+    }
+
+    el.mobileSidebarBtn.addEventListener("click", () => toggleMobileSidebar(true));
+    el.closeSidebarBtn.addEventListener("click", () => toggleMobileSidebar(false));
+    el.sidebarBackdrop.addEventListener("click", () => toggleMobileSidebar(false));
+
+    // =========================================================================
+    // LOCALSTORAGE SESSIONS MANAGEMENT
+    // =========================================================================
+    function getActiveNote() {
+      return state.notes.find(n => n.id === state.activeNoteId);
+    }
+
+    function loadNotesFromStorage() {
+      try {
+        const raw = localStorage.getItem("sant_studio_sessions_v2");
+        state.notes = raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        state.notes = [];
+      }
+
+      if (state.notes.length === 0) {
+        createNewNoteSession(false);
+      } else {
+        selectNote(state.notes[0].id);
+      }
+      renderNotesSidebar();
+    }
+
+    function saveNotesToStorage() {
+      try {
+        localStorage.setItem("sant_studio_sessions_v2", JSON.stringify(state.notes));
+        el.autoSaveLabel.textContent = "Saved";
+      } catch (e) {
+        el.autoSaveLabel.textContent = "Storage full";
+      }
+    }
+
+    function createNewNoteSession(notify = true) {
+      if (state.isRecording) {
+        showToast("Stop the current recording before starting a new session.", "warning");
+        return;
+      }
+
+      const now = new Date();
+      const newNote = {
+        id: "session_" + Date.now(),
+        title: `Session — ${now.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+        createdAt: now.toISOString(),
+        duration: "00:00",
+        transcript: "",
+        grammarCorrected: "",
+        grammarFixes: [],
+        execSummary: "",
+        keyTakeaways: "",
+        actionItems: [],
+        keyTerms: "",
+      };
+
+      state.notes.unshift(newNote);
+      saveNotesToStorage();
+      selectNote(newNote.id);
+      renderNotesSidebar();
+      toggleMobileSidebar(false);
+
+      el.audioPlayerContainer.classList.add("hidden");
+      state.recordedBlob = null;
+      el.timerDisplay.textContent = "00:00";
+
+      if (notify) showToast("Started a new session.", "success");
+    }
+
+    function selectNote(noteId) {
+      const note = state.notes.find(n => n.id === noteId);
+      if (!note) return;
+
+      state.activeNoteId = note.id;
+      el.noteTitleInput.value = note.title || "";
+      el.transcriptTextarea.value = note.transcript || "";
+      el.grammarCleanTextarea.value = note.grammarCorrected || "";
+      el.execSummaryTextarea.value = note.execSummary || "";
+      el.keyTakeawaysTextarea.value = note.keyTakeaways || "";
+      el.keyTermsTextarea.value = note.keyTerms || "";
+      el.noteDurationLabel.textContent = `${note.duration || "00:00"} duration`;
+
+      renderGrammarFixesLog(note.grammarFixes || []);
+      renderActionItems(note.actionItems || []);
+      if (state.grammarViewMode === "diff") {
+        setGrammarDisplayMode("diff");
+      }
+
+      const dateObj = new Date(note.createdAt);
+      el.noteDateLabel.textContent = dateObj.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      updateWordCount();
+      renderNotesSidebar();
+    }
+
+    function updateCurrentNoteField(field, value) {
+      const note = getActiveNote();
+      if (!note) return;
+      note[field] = value;
+      el.autoSaveLabel.textContent = "Saving...";
+      saveNotesToStorage();
+      if (field === "title" || field === "duration") {
+        renderNotesSidebar();
+      }
+    }
+
+    function deleteNote(noteId, event) {
+      event.stopPropagation();
+      state.notes = state.notes.filter(n => n.id !== noteId);
+      saveNotesToStorage();
+
+      if (state.notes.length === 0) {
+        createNewNoteSession(false);
+      } else if (state.activeNoteId === noteId) {
+        selectNote(state.notes[0].id);
+      }
+      renderNotesSidebar();
+      showToast("Session deleted.", "info");
+    }
+
+    function renderNotesSidebar() {
+      const query = el.searchNotesInput.value.trim().toLowerCase();
+      const filtered = state.notes.filter(n =>
+        (n.title || "").toLowerCase().includes(query) ||
+        (n.transcript || "").toLowerCase().includes(query) ||
+        (n.grammarCorrected || "").toLowerCase().includes(query) ||
+        (n.execSummary || "").toLowerCase().includes(query)
+      );
+
+      el.notesCountLabel.textContent = `${state.notes.length} saved session${state.notes.length === 1 ? "" : "s"}`;
+      el.savedNotesList.innerHTML = "";
+
+      if (filtered.length === 0) {
+        el.savedNotesList.innerHTML = `<div class="text-center py-8 px-4 text-xs text-slate-400">No matching sessions found.</div>`;
+        return;
+      }
+
+      filtered.forEach(note => {
+        const isActive = note.id === state.activeNoteId;
+        const dateStr = new Date(note.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+        const preview = (note.execSummary || note.grammarCorrected || note.transcript || "Empty session...").slice(0, 70);
+        const fixBadge = note.grammarFixes && note.grammarFixes.length > 0
+          ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 text-[10px] font-medium">${note.grammarFixes.length} fixes</span>`
+          : "";
+
+        const item = document.createElement("div");
+        item.className = `group relative p-3 rounded-xl cursor-pointer border transition-all ${
+          isActive
+            ? "bg-indigo-500/10 border-indigo-500/40"
+            : "bg-transparent hover:bg-slate-100/80 dark:hover:bg-[#1e293b]/80 border-transparent"
+        }`;
+
+        item.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <h4 class="text-xs font-semibold truncate ${isActive ? "text-indigo-600 dark:text-indigo-300" : "text-slate-800 dark:text-slate-200"}">
+              ${escapeHtml(note.title || "Untitled Session")}
+            </h4>
+            <button class="delete-note-btn opacity-0 group-hover:opacity-100 p-1 rounded-md text-slate-400 hover:text-rose-500 transition cursor-pointer" title="Delete session">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+            ${escapeHtml(preview)}
+          </p>
+          <div class="flex items-center justify-between mt-2 text-[10px] font-medium text-slate-400">
+            <div class="flex items-center gap-1.5">
+              <span>${dateStr}</span>
+              <span>•</span>
+              <span>${note.duration || "00:00"}</span>
+            </div>
+            ${fixBadge}
+          </div>
+        `;
+
+        item.addEventListener("click", () => {
+          selectNote(note.id);
+          toggleMobileSidebar(false);
+        });
+
+        item.querySelector(".delete-note-btn").addEventListener("click", (e) => deleteNote(note.id, e));
+        el.savedNotesList.appendChild(item);
+      });
+
+      lucide.createIcons({ root: el.savedNotesList });
+    }
+
+    el.newNoteBtn.addEventListener("click", () => createNewNoteSession(true));
+    el.searchNotesInput.addEventListener("input", renderNotesSidebar);
+    el.noteTitleInput.addEventListener("input", (e) => updateCurrentNoteField("title", e.target.value));
+    el.transcriptTextarea.addEventListener("input", (e) => {
+      updateCurrentNoteField("transcript", e.target.value);
+      updateWordCount();
+    });
+    el.grammarCleanTextarea.addEventListener("input", (e) => {
+      updateCurrentNoteField("grammarCorrected", e.target.value);
+      if (state.grammarViewMode === "diff") setGrammarDisplayMode("diff");
+    });
+    el.execSummaryTextarea.addEventListener("input", (e) => updateCurrentNoteField("execSummary", e.target.value));
+    el.keyTakeawaysTextarea.addEventListener("input", (e) => updateCurrentNoteField("keyTakeaways", e.target.value));
+    el.keyTermsTextarea.addEventListener("input", (e) => updateCurrentNoteField("keyTerms", e.target.value));
+
+    // =========================================================================
+    // AUDIO VISUALIZER (WEB AUDIO API ANALYSERNODE)
+    // =========================================================================
+    function resizeVisualizerCanvas() {
+      const canvas = el.visualizerCanvas;
+      if (!canvas) return;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+    }
+
+    window.addEventListener("resize", resizeVisualizerCanvas);
+    window.addEventListener("load", () => {
+      resizeVisualizerCanvas();
+      applyWorkspaceLayout();
+    });
+
+    function startVisualizer(analyser) {
+      resizeVisualizerCanvas();
+      el.visualizerPlaceholder.classList.add("hidden");
+
+      const canvas = el.visualizerCanvas;
+      const ctx = canvas.getContext("2d");
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      function draw() {
+        state.animationFrameId = requestAnimationFrame(draw);
+        analyser.getByteFrequencyData(dataArray);
+
+        const width = canvas.width;
+        const height = canvas.height;
+        ctx.clearRect(0, 0, width, height);
+
+        const barCount = 72;
+        const step = Math.floor(bufferLength / barCount);
+        const totalBarSpace = width / barCount;
+        const barWidth = Math.max(2 * window.devicePixelRatio, totalBarSpace * 0.62);
+
+        for (let i = 0; i < barCount; i++) {
+          const val = dataArray[i * step] || 0;
+          const percent = val / 255;
+          const barHeight = Math.max(3 * window.devicePixelRatio, percent * (height * 0.82));
+
+          const x = i * totalBarSpace + (totalBarSpace - barWidth) / 2;
+          const y = (height - barHeight) / 2;
+
+          const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
+          gradient.addColorStop(0, "#818cf8");
+          gradient.addColorStop(0.5, "#6366f1");
+          gradient.addColorStop(1, "#10b981");
+
+          ctx.fillStyle = state.isPaused ? "rgba(245, 158, 11, 0.55)" : gradient;
+          ctx.beginPath();
+          ctx.roundRect(x, y, barWidth, barHeight, 4 * window.devicePixelRatio);
+          ctx.fill();
+        }
+      }
+
+      draw();
+    }
+
+    function stopVisualizer() {
+      if (state.animationFrameId) {
+        cancelAnimationFrame(state.animationFrameId);
+        state.animationFrameId = null;
+      }
+      const canvas = el.visualizerCanvas;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      el.visualizerPlaceholder.classList.remove("hidden");
+    }
+
+    // =========================================================================
+    // SYSTEM SOUND + OPTIONAL MIC CAPTURE ENGINE
+    // =========================================================================
+    async function startSystemAudioCapture() {
+      el.missingAudioBanner.classList.add("hidden");
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        showToast("Your browser does not support system audio capture via getDisplayMedia.", "error");
+        return;
+      }
+
+      try {
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          }
+        });
+
+        // Immediately stop video track for privacy
+        displayStream.getVideoTracks().forEach(track => track.stop());
+
+        const systemAudioTracks = displayStream.getAudioTracks();
+        if (systemAudioTracks.length === 0) {
+          displayStream.getTracks().forEach(t => t.stop());
+          el.missingAudioBanner.classList.remove("hidden");
+          showToast("No system audio track found. Check 'Share system audio' in the popup.", "warning");
+          return;
+        }
+
+        state.displayStream = displayStream;
+
+        systemAudioTracks[0].onended = () => {
+          if (state.isRecording) stopRecordingAndTranscribe();
+        };
+
+        let micStream = null;
+        if (el.includeMicToggle.checked) {
+          try {
+            micStream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+              }
+            });
+            state.micStream = micStream;
+          } catch (micErr) {
+            showToast("Microphone permission denied. Recording System Audio only.", "warning");
+            el.includeMicToggle.checked = false;
+          }
+        }
+
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioCtx();
+        state.audioContext = audioCtx;
+
+        const destination = audioCtx.createMediaStreamDestination();
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+
+        const systemSource = audioCtx.createMediaStreamSource(new MediaStream(systemAudioTracks));
+        systemSource.connect(destination);
+        systemSource.connect(analyser);
+
+        if (micStream && micStream.getAudioTracks().length > 0) {
+          const micSource = audioCtx.createMediaStreamSource(micStream);
+          micSource.connect(destination);
+          micSource.connect(analyser);
+          el.audioSourceLabel.textContent = "System + Mic";
+        } else {
+          el.audioSourceLabel.textContent = "System Sound";
+        }
+
+        state.analyserNode = analyser;
+
+        const supportedTypes = [
+          "audio/webm;codecs=opus",
+          "audio/webm",
+          "audio/ogg;codecs=opus",
+          "audio/mp4"
+        ];
+        const chosenMime = supportedTypes.find(type => MediaRecorder.isTypeSupported(type)) || "";
+        state.mimeType = chosenMime || "audio/webm";
+
+        state.audioChunks = [];
+        const recorder = chosenMime
+          ? new MediaRecorder(destination.stream, { mimeType: chosenMime })
+          : new MediaRecorder(destination.stream);
+
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            state.audioChunks.push(event.data);
+          }
+        };
+
+        recorder.onstop = handleRecordingStopped;
+        recorder.start(1000);
+        state.mediaRecorder = recorder;
+
+        state.isRecording = true;
+        state.isPaused = false;
+        state.startTime = Date.now();
+        state.pausedDuration = 0;
+
+        updateCaptureControlsUI(true);
+        startVisualizer(analyser);
+        startTimer();
+
+        if (el.liveChunkToggle.checked) {
+          startLiveChunkedTranscription();
+        }
+        if (el.browserSpeechToggle.checked) {
+          startBrowserSpeechRecognition();
+        }
+
+        setAppStatus("Listening to System Audio", "recording");
+        showToast("System audio capture active! Play your meeting, video, or lecture.", "success");
+
+      } catch (err) {
+        if (err.name === "NotAllowedError") {
+          showToast("Capture prompt was cancelled.", "info");
+        } else {
+          showToast(`Capture failed: ${err.message}`, "error");
+        }
+      }
+    }
+
+    function togglePauseResume() {
+      if (!state.isRecording || !state.mediaRecorder) return;
+
+      if (!state.isPaused) {
+        state.mediaRecorder.pause();
+        state.isPaused = true;
+        state.lastPauseStart = Date.now();
+        el.pauseResumeBtn.innerHTML = `<i data-lucide="play" class="w-4 h-4"></i><span>Resume</span>`;
+        el.recIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
+        setAppStatus("Recording Paused", "paused");
+      } else {
+        state.mediaRecorder.resume();
+        state.isPaused = false;
+        state.pausedDuration += Date.now() - state.lastPauseStart;
+        el.pauseResumeBtn.innerHTML = `<i data-lucide="pause" class="w-4 h-4"></i><span>Pause</span>`;
+        el.recIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping";
+        setAppStatus("Listening to System Audio", "recording");
+      }
+      lucide.createIcons({ root: el.pauseResumeBtn });
+    }
+
+    function stopRecordingAndTranscribe() {
+      if (!state.isRecording) return;
+      state.isRecording = false;
+      state.isPaused = false;
+
+      clearInterval(state.timerInterval);
+      clearInterval(state.chunkInterval);
+      stopBrowserSpeechRecognition();
+      stopVisualizer();
+
+      if (state.mediaRecorder && state.mediaRecorder.state !== "inactive") {
+        state.mediaRecorder.stop();
+      }
+
+      if (state.displayStream) {
+        state.displayStream.getTracks().forEach(t => t.stop());
+        state.displayStream = null;
+      }
+      if (state.micStream) {
+        state.micStream.getTracks().forEach(t => t.stop());
+        state.micStream = null;
+      }
+      if (state.audioContext) {
+        state.audioContext.close().catch(() => {});
+        state.audioContext = null;
+      }
+      state.sysAnalyserNode = null;
+      state.micAnalyserNode = null;
+
+      el.singleTabWarningBanner.classList.add("hidden");
+      updateCaptureControlsUI(false);
+      el.audioSourceLabel.textContent = "Recorded";
+      el.surfaceBadge.className = "flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400";
+    }
+
+    async function handleRecordingStopped() {
+      if (state.audioChunks.length === 0) {
+        setAppStatus("Ready", "idle");
+        return;
+      }
+
+      const blob = new Blob(state.audioChunks, { type: state.mimeType });
+      state.recordedBlob = blob;
+
+      if (state.recordedAudioUrl) URL.revokeObjectURL(state.recordedAudioUrl);
+      state.recordedAudioUrl = URL.createObjectURL(blob);
+
+      el.recordedAudioPlayer.src = state.recordedAudioUrl;
+      el.audioPlayerContainer.classList.remove("hidden");
+      el.audioPlayerContainer.classList.add("flex");
+
+      const finalDuration = el.timerDisplay.textContent;
+      el.noteDurationLabel.textContent = `${finalDuration} duration`;
+      updateCurrentNoteField("duration", finalDuration);
+
+      await processAudioWithGemini(blob, false);
+    }
+
+    function updateCaptureControlsUI(recording) {
+      if (recording) {
+        el.captureBtn.classList.add("hidden");
+        el.pauseResumeBtn.classList.remove("hidden");
+        el.pauseResumeBtn.classList.add("flex");
+        el.stopBtn.classList.remove("hidden");
+        el.stopBtn.classList.add("flex");
+        el.recIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping";
+      } else {
+        el.captureBtn.classList.remove("hidden");
+        el.pauseResumeBtn.classList.add("hidden");
+        el.pauseResumeBtn.classList.remove("flex");
+        el.stopBtn.classList.add("hidden");
+        el.stopBtn.classList.remove("flex");
+        el.recIndicator.className = "w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-600";
+      }
+    }
+
+    function startTimer() {
+      clearInterval(state.timerInterval);
+      state.timerInterval = setInterval(() => {
+        if (state.isPaused) return;
+        const elapsedSec = Math.floor((Date.now() - state.startTime - state.pausedDuration) / 1000);
+        el.timerDisplay.textContent = formatDuration(elapsedSec);
+      }, 500);
+    }
+
+    el.captureBtn.addEventListener("click", startSystemAudioCapture);
+    el.retryCaptureBtn.addEventListener("click", startSystemAudioCapture);
+    el.dismissBannerBtn.addEventListener("click", () => el.missingAudioBanner.classList.add("hidden"));
+    el.switchToWholeSystemBtn.addEventListener("click", switchToWholeSystemCapture);
+    el.dismissTabWarningBtn.addEventListener("click", () => el.singleTabWarningBanner.classList.add("hidden"));
+    el.pauseResumeBtn.addEventListener("click", togglePauseResume);
+    el.stopBtn.addEventListener("click", stopRecordingAndTranscribe);
+
+    // =========================================================================
+    // LIVE 20s ROLLING TRANSCRIPTION + GRAMMAR CHECK + RUNNING SUMMARY
+    // =========================================================================
+    function startLiveChunkedTranscription() {
+      clearInterval(state.chunkInterval);
+      state.chunkInterval = setInterval(async () => {
+        if (!state.isRecording || state.isPaused || state.isProcessingAI) return;
+        if (state.audioChunks.length < 3) return;
+
+        const snapshotBlob = new Blob(state.audioChunks, { type: state.mimeType });
+        if (snapshotBlob.size > 9 * 1024 * 1024) return;
+
+        await processAudioWithGemini(snapshotBlob, true);
+      }, 20000);
+    }
+
+    function startBrowserSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        showToast("Browser SpeechRecognition API is not supported in this browser.", "warning");
+        el.browserSpeechToggle.checked = false;
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = navigator.language || "en-US";
+
+      let finalized = el.transcriptTextarea.value ? el.transcriptTextarea.value + "\n" : "";
+
+      recognition.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalized += transcript.trim() + " ";
+          } else {
+            interim += transcript;
+          }
+        }
+        el.transcriptTextarea.value = finalized + (interim ? `[Live Mic: ${interim}]` : "");
+        updateWordCount();
+      };
+
+      recognition.onerror = () => {};
+      recognition.onend = () => {
+        if (state.isRecording && el.browserSpeechToggle.checked) {
+          try { recognition.start(); } catch (e) {}
+        }
+      };
+
+      try {
+        recognition.start();
+        state.speechRecognition = recognition;
+      } catch (e) {}
+    }
+
+    function stopBrowserSpeechRecognition() {
+      if (state.speechRecognition) {
+        try { state.speechRecognition.stop(); } catch (e) {}
+        state.speechRecognition = null;
+      }
+    }
+
+    // =========================================================================
+    // AUDIO UPLOAD & DOWNLOAD
+    // =========================================================================
+    el.audioUploadInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (state.isRecording) {
+        showToast("Stop current recording before uploading an audio file.", "warning");
+        return;
+      }
+
+      state.recordedBlob = file;
+      state.mimeType = file.type || "audio/webm";
+      if (state.recordedAudioUrl) URL.revokeObjectURL(state.recordedAudioUrl);
+      state.recordedAudioUrl = URL.createObjectURL(file);
+
+      el.recordedAudioPlayer.src = state.recordedAudioUrl;
+      el.audioPlayerContainer.classList.remove("hidden");
+      el.audioPlayerContainer.classList.add("flex");
+      el.audioSourceLabel.textContent = "Uploaded File";
+
+      const cleanName = file.name.replace(/\.[^/.]+$/, "");
+      el.noteTitleInput.value = cleanName;
+      updateCurrentNoteField("title", cleanName);
+
+      showToast(`Loaded "${file.name}". Processing audio...`, "info");
+      await processAudioWithGemini(file, false);
+      e.target.value = "";
+    });
+
+    el.downloadAudioBtn.addEventListener("click", () => {
+      if (!state.recordedBlob) {
+        showToast("No recorded audio available to download.", "warning");
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = state.recordedAudioUrl;
+      const safeTitle = (el.noteTitleInput.value || "system-audio").replace(/[^a-z0-9-_]+/gi, "_").toLowerCase();
+      a.download = `${safeTitle}.webm`;
+      a.click();
+    });
+
+    // =========================================================================
+    // GEMINI API: MULTIMODAL AUDIO & TEXT -> TRANSCRIPT + GRAMMAR + SUMMARY
+    // =========================================================================
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function fetchGeminiWithBackoff(payload, maxRetries = 4) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+      let delay = 1000;
+
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            if ((response.status === 429 || response.status >= 500) && attempt < maxRetries) {
+              await new Promise(r => setTimeout(r, delay));
+              delay *= 2;
+              continue;
+            }
+            const errBody = await response.text();
+            throw new Error(`API Error (${response.status}): ${errBody}`);
+          }
+
+          return await response.json();
+        } catch (err) {
+          if (attempt === maxRetries) throw err;
+          await new Promise(r => setTimeout(r, delay));
+          delay *= 2;
+        }
+      }
+    }
+
+    function getStructuredOutputSchema() {
+      return {
+        type: "OBJECT",
+        properties: {
+          suggestedTitle: { type: "STRING" },
+          verbatimTranscript: { type: "STRING" },
+          grammarCorrectedText: { type: "STRING" },
+          grammarFixes: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                original: { type: "STRING" },
+                corrected: { type: "STRING" },
+                reason: { type: "STRING" }
+              },
+              required: ["original", "corrected", "reason"]
+            }
+          },
+          executiveSummary: { type: "STRING" },
+          keyTakeaways: {
+            type: "ARRAY",
+            items: { type: "STRING" }
+          },
+          actionItems: {
+            type: "ARRAY",
+            items: { type: "STRING" }
+          },
+          keyTerms: {
+            type: "ARRAY",
+            items: { type: "STRING" }
+          }
+        },
+        required: [
+          "suggestedTitle",
+          "verbatimTranscript",
+          "grammarCorrectedText",
+          "grammarFixes",
+          "executiveSummary",
+          "keyTakeaways",
+          "actionItems",
+          "keyTerms"
+        ]
+      };
+    }
+
+    function getGrammarToneInstruction() {
+      const tone = el.grammarToneSelect.value;
+      if (tone === "professional") {
+        return "Apply 'Professional Polish': fix all grammar, spelling, punctuation, run-on sentences, and filler words (um, uh, like), elevating phrasing to clear, formal, publication-ready prose while preserving exact meaning.";
+      }
+      return "Apply 'Standard Clean-Up': fix grammar, spelling, capitalization, punctuation, and awkward phrasing while preserving the speaker's natural conversational voice and tone.";
+    }
+
+    function applyStructuredResultToUI(parsed, isLivePreview = false) {
+      if (parsed.verbatimTranscript !== undefined) {
+        el.transcriptTextarea.value = parsed.verbatimTranscript;
+        updateCurrentNoteField("transcript", parsed.verbatimTranscript);
+        updateWordCount();
+      }
+
+      if (parsed.grammarCorrectedText !== undefined) {
+        el.grammarCleanTextarea.value = parsed.grammarCorrectedText;
+        updateCurrentNoteField("grammarCorrected", parsed.grammarCorrectedText);
+      }
+
+      const fixes = Array.isArray(parsed.grammarFixes) ? parsed.grammarFixes : [];
+      updateCurrentNoteField("grammarFixes", fixes);
+      renderGrammarFixesLog(fixes);
+
+      if (state.grammarViewMode === "diff") {
+        setGrammarDisplayMode("diff");
+      }
+
+      if (parsed.executiveSummary !== undefined) {
+        el.execSummaryTextarea.value = parsed.executiveSummary;
+        updateCurrentNoteField("execSummary", parsed.executiveSummary);
+      }
+
+      if (Array.isArray(parsed.keyTakeaways)) {
+        const formattedTakeaways = parsed.keyTakeaways.map(t => (t.startsWith("•") ? t : `• ${t}`)).join("\n");
+        el.keyTakeawaysTextarea.value = formattedTakeaways;
+        updateCurrentNoteField("keyTakeaways", formattedTakeaways);
+      }
+
+      if (Array.isArray(parsed.actionItems)) {
+        const note = getActiveNote();
+        const existingDoneMap = new Map(
+          (note?.actionItems || []).map(item => [item.text, item.done])
+        );
+        const mappedActions = parsed.actionItems.map(text => ({
+          text,
+          done: existingDoneMap.get(text) || false
+        }));
+        updateCurrentNoteField("actionItems", mappedActions);
+        renderActionItems(mappedActions);
+      }
+
+      if (Array.isArray(parsed.keyTerms)) {
+        const formattedTerms = parsed.keyTerms.map(t => (t.startsWith("•") ? t : `• ${t}`)).join("\n");
+        el.keyTermsTextarea.value = formattedTerms;
+        updateCurrentNoteField("keyTerms", formattedTerms);
+      }
+
+      if (!isLivePreview && parsed.suggestedTitle && el.noteTitleInput.value.startsWith("Session —")) {
+        el.noteTitleInput.value = parsed.suggestedTitle;
+        updateCurrentNoteField("title", parsed.suggestedTitle);
+      }
+    }
+
+    async function processAudioWithGemini(audioBlob, isLivePreview = false) {
+      if (state.isProcessingAI) return;
+      state.isProcessingAI = true;
+
+      if (!isLivePreview) {
+        setAppStatus("Transcribing, Correcting & Summarizing...", "processing");
+        el.aiProgressBanner.classList.remove("hidden");
+        el.aiProgressBanner.classList.add("flex");
+        el.aiProgressText.textContent = "Gemini AI is transcribing system audio, running automated grammar correction, and synthesizing your summary...";
+      }
+
+      try {
+        const base64Audio = await blobToBase64(audioBlob);
+        const cleanMime = (audioBlob.type || "audio/webm").split(";")[0];
+        const toneInstruction = getGrammarToneInstruction();
+
+        const payload = {
+          contents: [{
+            role: "user",
+            parts: [
+              {
+                text: `Listen carefully to this recorded laptop system audio and return a structured JSON response containing:
+1. "verbatimTranscript": Complete, accurate, word-for-word transcript with timestamps (e.g., [00:12]) and speaker labels (e.g., Speaker 1, Host). Keep natural speech exactly as spoken.
+2. "grammarCorrectedText": The full text with automated grammar, spelling, punctuation, and fluency corrections applied (without timestamps). ${toneInstruction}
+3. "grammarFixes": An array of key grammar/punctuation/phrasing fixes made (up to 15 most impactful fixes), each with "original" snippet, "corrected" snippet, and concise "reason" (e.g., "Subject-verb agreement", "Punctuation & sentence boundary", "Verb tense consistency", "Removed filler words").
+4. "executiveSummary": A concise 2-4 sentence summary of the audio content.
+5. "keyTakeaways": Bullet list of the main points and insights.
+6. "actionItems": Specific tasks, follow-ups, or action items mentioned (empty array if none).
+7. "keyTerms": Key vocabulary, concepts, tools, or names with brief definitions.
+8. "suggestedTitle": A concise 4-to-7 word descriptive title.`
+              },
+              {
+                inlineData: {
+                  mimeType: cleanMime,
+                  data: base64Audio
+                }
+              }
+            ]
+          }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: getStructuredOutputSchema()
+          }
+        };
+
+        const result = await fetchGeminiWithBackoff(payload, isLivePreview ? 1 : 4);
+        const rawJson = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (rawJson) {
+          const parsed = JSON.parse(rawJson);
+          if (isLivePreview && !state.isRecording) return;
+          applyStructuredResultToUI(parsed, isLivePreview);
+          if (!isLivePreview) {
+            showToast("Audio transcribed, grammar-corrected, and summarized!", "success");
+          }
+        }
+      } catch (err) {
+        if (!isLivePreview) {
+          showToast(`AI processing error: ${err.message}`, "error");
+        }
+      } finally {
+        state.isProcessingAI = false;
+        if (!isLivePreview) {
+          el.aiProgressBanner.classList.add("hidden");
+          el.aiProgressBanner.classList.remove("flex");
+          setAppStatus("Ready", "idle");
+        }
+      }
+    }
+
+    async function processTextWithGemini(rawText) {
+      if (state.isProcessingAI) return;
+      state.isProcessingAI = true;
+
+      setAppStatus("Correcting Grammar & Summarizing...", "processing");
+      el.aiProgressBanner.classList.remove("hidden");
+      el.aiProgressBanner.classList.add("flex");
+      el.aiProgressText.textContent = "Running automated grammar corrector and generating structured summary...";
+
+      try {
+        const toneInstruction = getGrammarToneInstruction();
+        const payload = {
+          contents: [{
+            role: "user",
+            parts: [{
+              text: `Analyze the following raw transcript/text and return a structured JSON response:
+1. "verbatimTranscript": Return the input text cleanly preserved.
+2. "grammarCorrectedText": The full text with automated grammar, spelling, punctuation, and fluency corrections applied (removing timestamps if present). ${toneInstruction}
+3. "grammarFixes": An array of key grammar/punctuation/phrasing corrections made (up to 15 most impactful fixes), each with "original" snippet, "corrected" snippet, and concise "reason" (e.g., "Subject-verb agreement", "Punctuation", "Verb tense consistency", "Clarity & phrasing").
+4. "executiveSummary": A concise 2-4 sentence summary of the text.
+5. "keyTakeaways": Bullet list of the main points and insights.
+6. "actionItems": Specific tasks or action items mentioned (empty array if none).
+7. "keyTerms": Key vocabulary, concepts, or terms with brief definitions.
+8. "suggestedTitle": A concise 4-to-7 word descriptive title.
+
+Input Text:
+${rawText}`
+            }]
+          }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: getStructuredOutputSchema()
+          }
+        };
+
+        const result = await fetchGeminiWithBackoff(payload);
+        const rawJson = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (rawJson) {
+          const parsed = JSON.parse(rawJson);
+          applyStructuredResultToUI(parsed, false);
+          showToast("Grammar corrected and smart summary generated!", "success");
+        }
+      } catch (err) {
+        showToast(`Failed to process text: ${err.message}`, "error");
+      } finally {
+        state.isProcessingAI = false;
+        el.aiProgressBanner.classList.add("hidden");
+        el.aiProgressBanner.classList.remove("flex");
+        setAppStatus("Ready", "idle");
+      }
+    }
+
+    // Re-run button & Tone change handler
+    el.rerunAiBtn.addEventListener("click", async () => {
+      const currentText = el.transcriptTextarea.value.trim();
+      if (currentText) {
+        await processTextWithGemini(currentText);
+      } else if (state.recordedBlob) {
+        await processAudioWithGemini(state.recordedBlob, false);
+      } else {
+        showToast("Record system audio or paste text first.", "warning");
+      }
+    });
+
+    el.grammarToneSelect.addEventListener("change", async () => {
+      const currentText = el.transcriptTextarea.value.trim();
+      if (currentText && !state.isProcessingAI) {
+        await processTextWithGemini(currentText);
+      }
+    });
+
+    // =========================================================================
+    // ONE-CLICK CLIPBOARD & FILE EXPORTS
+    // =========================================================================
+    function copyTextToClipboard(text, label) {
+      if (!text || !text.trim()) {
+        showToast(`No ${label} available to copy.`, "warning");
+        return;
+      }
+      const tempArea = document.createElement("textarea");
+      tempArea.value = text;
+      document.body.appendChild(tempArea);
+      tempArea.select();
+      try {
+        document.execCommand("copy");
+        showToast(`${label} copied to clipboard!`, "success");
+      } catch (err) {
+        showToast("Unable to copy to clipboard.", "error");
+      }
+      document.body.removeChild(tempArea);
+    }
+
+    function buildFormattedSummaryText() {
+      const note = getActiveNote();
+      const exec = el.execSummaryTextarea.value.trim();
+      const takeaways = el.keyTakeawaysTextarea.value.trim();
+      const actions = (note?.actionItems || [])
+        .map(a => `- [${a.done ? "x" : " "}] ${a.text}`)
+        .join("\n");
+      const terms = el.keyTermsTextarea.value.trim();
+
+      return [
+        exec ? `### Executive Summary\n${exec}` : "",
+        takeaways ? `### Key Takeaways\n${takeaways}` : "",
+        actions ? `### Action Items\n${actions}` : "",
+        terms ? `### Key Terms & Definitions\n${terms}` : "",
+      ].filter(Boolean).join("\n\n");
+    }
+
+    el.copyRawBtn.addEventListener("click", () => {
+      copyTextToClipboard(el.transcriptTextarea.value, "Raw Transcript");
+    });
+
+    el.copyGrammarBtn.addEventListener("click", () => {
+      copyTextToClipboard(el.grammarCleanTextarea.value, "Grammar-Corrected Text");
+    });
+
+    el.copySummaryBtn.addEventListener("click", () => {
+      copyTextToClipboard(buildFormattedSummaryText(), "Smart Summary");
+    });
+
+    function buildFullExportContent() {
+      const title = el.noteTitleInput.value.trim() || "Untitled System Audio Session";
+      const date = el.noteDateLabel.textContent;
+      const duration = el.noteDurationLabel.textContent;
+      const summary = buildFormattedSummaryText();
+      const grammarCorrected = el.grammarCleanTextarea.value.trim();
+      const rawTranscript = el.transcriptTextarea.value.trim();
+
+      return `# ${title}\nDate: ${date} | ${duration}\n\n---\n\n## Smart Summary\n\n${summary || "_No summary generated._"}\n\n---\n\n## Grammar-Corrected Text\n\n${grammarCorrected || "_No grammar-corrected text available._"}\n\n---\n\n## Raw Verbatim Transcript\n\n${rawTranscript || "_No transcript available._"}\n`;
+    }
+
+    function downloadTextFile(extension) {
+      const content = buildFullExportContent();
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeTitle = (el.noteTitleInput.value || "system-audio-note").replace(/[^a-z0-9-_]+/gi, "_").toLowerCase();
+      a.href = url;
+      a.download = `${safeTitle}.${extension}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast(`Exported all sections as ${safeTitle}.${extension}`, "success");
+    }
+
+    el.exportMdBtn.addEventListener("click", () => downloadTextFile("md"));
+    el.exportTxtBtn.addEventListener("click", () => downloadTextFile("txt"));
+
+    // =========================================================================
+    // INITIALIZE STUDIO
+    // =========================================================================
+    initTheme();
+    loadNotesFromStorage();
+    applyWorkspaceLayout();
+    setAppStatus("Ready", "idle");
+  </script>
+</body>
+</html>
